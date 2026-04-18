@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Weather</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+body {
+  margin:0;
+  font-family: system-ui;
+  display:flex;
+  height:100vh;
+  background:linear-gradient(to top,#4facfe,#00f2fe);
+  color:white;
+}
+
+.panel {
+  width:420px;
+  padding:16px;
+  background:rgba(0,0,0,0.5);
+  backdrop-filter: blur(10px);
+  overflow:auto;
+}
+
+input {
+  width:100%;
+  padding:12px;
+  border:none;
+  border-radius:10px;
+  margin-bottom:10px;
+}
+
+button {
+  padding:6px 8px;
+  margin:3px;
+  border:none;
+  border-radius:6px;
+  background:#1f2937;
+  color:white;
+  cursor:pointer;
+  font-size:11px;
+}
+
+button:hover {
+  background:#374151;
+}
+
+.card {
+  background:rgba(255,255,255,0.08);
+  padding:12px;
+  border-radius:12px;
+  margin-top:10px;
+}
+
+.temp { font-size:40px; }
+.icon { font-size:45px; }
+
+.group-title {
+  margin-top:10px;
+  margin-bottom:5px;
+  font-size:13px;
+  opacity:0.8;
+}
+
+#map { flex:1; }
+</style>
+</head>
+
+<body>
+
+<div class="panel">
+
+<h2>🌤️ Weather</h2>
+
+<input id="cityInput" placeholder="Escribe ciudad">
+
+<button onclick="searchCity()" style="width:100%;background:#2563eb;">Buscar</button>
+
+<div class="card">
+<h3 id="city">Listo</h3>
+<div class="icon" id="icon">🌍</div>
+<div class="temp" id="temp"></div>
+<p id="wind"></p>
+<p id="status"></p>
+</div>
+
+<!-- 🇪🇸 ESPAÑA -->
+<div class="group-title">🇪🇸 España</div>
+<button onclick="setCity('Madrid',40.41,-3.70)">Madrid</button>
+<button onclick="setCity('Barcelona',41.38,2.17)">Barcelona</button>
+<button onclick="setCity('Valencia',39.47,-0.38)">Valencia</button>
+<button onclick="setCity('Sevilla',37.39,-5.99)">Sevilla</button>
+<button onclick="setCity('Málaga',36.72,-4.42)">Málaga</button>
+<button onclick="setCity('Granada',37.18,-3.60)">Granada</button>
+<button onclick="setCity('Córdoba',37.88,-4.78)">Córdoba</button>
+<button onclick="setCity('Cádiz',36.53,-6.29)">Cádiz</button>
+<button onclick="setCity('Bilbao',43.26,-2.93)">Bilbao</button>
+<button onclick="setCity('Zaragoza',41.65,-0.88)">Zaragoza</button>
+<button onclick="setCity('Murcia',37.99,-1.13)">Murcia</button>
+<button onclick="setCity('Alicante',38.35,-0.48)">Alicante</button>
+<button onclick="setCity('Valladolid',41.65,-4.72)">Valladolid</button>
+<button onclick="setCity('Salamanca',40.97,-5.66)">Salamanca</button>
+<button onclick="setCity('Toledo',39.86,-4.02)">Toledo</button>
+<button onclick="setCity('Pamplona',42.82,-1.64)">Pamplona</button>
+<button onclick="setCity('Oviedo',43.36,-5.84)">Oviedo</button>
+<button onclick="setCity('Santander',43.46,-3.80)">Santander</button>
+<button onclick="setCity('La Coruña',43.36,-8.41)">A Coruña</button>
+<button onclick="setCity('Vigo',42.24,-8.72)">Vigo</button>
+
+<!-- 🌍 EUROPA -->
+<div class="group-title">🌍 Europa</div>
+<button onclick="setCity('Paris',48.85,2.35)">París</button>
+<button onclick="setCity('London',51.50,-0.12)">Londres</button>
+<button onclick="setCity('Rome',41.90,12.49)">Roma</button>
+<button onclick="setCity('Berlin',52.52,13.40)">Berlín</button>
+<button onclick="setCity('Lisboa',38.72,-9.14)">Lisboa</button>
+<button onclick="setCity('Amsterdam',52.37,4.90)">Ámsterdam</button>
+<button onclick="setCity('Brussels',50.85,4.35)">Bruselas</button>
+<button onclick="setCity('Vienna',48.21,16.37)">Viena</button>
+<button onclick="setCity('Prague',50.08,14.43)">Praga</button>
+<button onclick="setCity('Warsaw',52.23,21.01)">Varsovia</button>
+
+<!-- 🌍 MUNDO -->
+<div class="group-title">🌍 Mundo</div>
+<button onclick="setCity('New York',40.71,-74.00)">NY</button>
+<button onclick="setCity('Los Angeles',34.05,-118.24)">LA</button>
+<button onclick="setCity('Tokyo',35.68,139.69)">Tokio</button>
+<button onclick="setCity('Seoul',37.56,126.97)">Seúl</button>
+<button onclick="setCity('Dubai',25.20,55.27)">Dubái</button>
+<button onclick="setCity('Sydney',-33.86,151.20)">Sydney</button>
+<button onclick="setCity('Mexico City',19.43,-99.13)">CDMX</button>
+<button onclick="setCity('Buenos Aires',-34.60,-58.38)">Buenos Aires</button>
+
+</div>
+
+<div id="map"></div>
+
+<script>
+
+let map = L.map('map').setView([40,-3],5);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+attribution:'© OpenStreetMap'
+}).addTo(map);
+
+let marker;
+
+// 🌤️ iconos
+function icon(code){
+if(code<=1) return "☀️";
+if(code<=3) return "⛅";
+if(code<=48) return "🌫️";
+if(code<=67) return "🌧️";
+if(code<=77) return "❄️";
+if(code<=82) return "🌦️";
+return "⛈️";
+}
+
+// 📍 botón ciudad
+function setCity(name,lat,lon){
+document.getElementById("cityInput").value=name;
+load(name,lat,lon);
+}
+
+// 🔎 buscar ciudad
+function searchCity(){
+
+const city=document.getElementById("cityInput").value.trim();
+
+if(!city){
+document.getElementById("status").textContent="⚠️ Escribe una ciudad";
+return;
+}
+
+document.getElementById("status").textContent="🔎 Buscando...";
+
+fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=1`)
+.then(r=>r.json())
+.then(d=>{
+
+if(!d.results){
+document.getElementById("status").textContent="❌ Ciudad no encontrada";
+return;
+}
+
+const p=d.results[0];
+load(p.name,p.latitude,p.longitude);
+
+});
+
+}
+
+// 🌦️ clima
+function load(name,lat,lon){
+
+document.getElementById("status").textContent="🌤️ Cargando clima...";
+
+fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)
+.then(r=>r.json())
+.then(d=>{
+
+const w=d.current_weather;
+
+document.getElementById("city").textContent=name;
+document.getElementById("temp").textContent="🌡️ "+w.temperature+"°C";
+document.getElementById("wind").textContent="💨 "+w.windspeed+" km/h";
+document.getElementById("icon").textContent=icon(w.weathercode);
+document.getElementById("status").textContent="";
+
+map.setView([lat,lon],8);
+
+if(marker) map.removeLayer(marker);
+
+marker=L.marker([lat,lon]).addTo(map).bindPopup(name).openPopup();
+
+});
+
+}
+
+</script>
+
+</body>
+</html>
